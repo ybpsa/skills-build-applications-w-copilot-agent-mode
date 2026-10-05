@@ -1,62 +1,60 @@
 import { Router } from 'express';
-import {
-  ActivityModel,
-  LeaderboardEntryModel,
-  TeamModel,
-  UserModel,
-  WorkoutModel,
-} from '../models/index.js';
+import { activity } from '../models/activity.js';
+import { leaderboard } from '../models/leaderboard.js';
+import { team } from '../models/team.js';
+import { user } from '../models/user.js';
+import { workout } from '../models/workout.js';
 
 const router = Router();
 
-router.get('/users', async (_request, response) => {
-  response.json(await UserModel.find().sort({ displayName: 1 }).lean());
+router.get('/api/users', async (_request, response) => {
+  response.json(await user.find().sort({ displayName: 1 }).lean());
 });
 
-router.post('/users', async (request, response) => {
-  response.status(201).json(await UserModel.create(request.body));
+router.post('/api/users', async (request, response) => {
+  response.status(201).json(await user.create(request.body));
 });
 
-router.get('/teams', async (_request, response) => {
-  response.json(await TeamModel.find().populate('members').sort({ name: 1 }).lean());
+router.get('/api/teams', async (_request, response) => {
+  response.json(await team.find().populate('members').sort({ name: 1 }).lean());
 });
 
-router.post('/teams', async (request, response) => {
-  response.status(201).json(await TeamModel.create(request.body));
+router.post('/api/teams', async (request, response) => {
+  response.status(201).json(await team.create(request.body));
 });
 
-router.get('/activities', async (_request, response) => {
+router.get('/api/activities', async (_request, response) => {
   response.json(
-    await ActivityModel.find()
+    await activity.find()
       .populate('user')
       .sort({ completedAt: -1 })
       .lean(),
   );
 });
 
-router.post('/activities', async (request, response) => {
-  response.status(201).json(await ActivityModel.create(request.body));
+router.post('/api/activities', async (request, response) => {
+  response.status(201).json(await activity.create(request.body));
 });
 
-router.get('/leaderboard', async (_request, response) => {
+router.get('/api/leaderboard', async (_request, response) => {
   response.json(
-    await LeaderboardEntryModel.find()
+    await leaderboard.find()
       .populate('user team')
       .sort({ points: -1 })
       .lean(),
   );
 });
 
-router.post('/leaderboard', async (request, response) => {
-  response.status(201).json(await LeaderboardEntryModel.create(request.body));
+router.post('/api/leaderboard', async (request, response) => {
+  response.status(201).json(await leaderboard.create(request.body));
 });
 
-router.get('/workouts', async (_request, response) => {
-  response.json(await WorkoutModel.find().sort({ title: 1 }).lean());
+router.get('/api/workouts', async (_request, response) => {
+  response.json(await workout.find().sort({ title: 1 }).lean());
 });
 
-router.post('/workouts', async (request, response) => {
-  response.status(201).json(await WorkoutModel.create(request.body));
+router.post('/api/workouts', async (request, response) => {
+  response.status(201).json(await workout.create(request.body));
 });
 
 export default router;

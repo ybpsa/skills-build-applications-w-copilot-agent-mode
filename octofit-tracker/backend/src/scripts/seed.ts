@@ -1,12 +1,10 @@
 import mongoose from 'mongoose';
 import { connectDatabase } from '../config/database.js';
-import {
-  ActivityModel,
-  LeaderboardEntryModel,
-  TeamModel,
-  UserModel,
-  WorkoutModel,
-} from '../models/index.js';
+import { activity } from '../models/activity.js';
+import { leaderboard } from '../models/leaderboard.js';
+import { team } from '../models/team.js';
+import { user } from '../models/user.js';
+import { workout } from '../models/workout.js';
 
 const userData = [
   { username: 'alex-runner', email: 'alex@example.com', displayName: 'Alex Rivera' },
@@ -19,70 +17,63 @@ const workoutData = [
   {
     title: 'Quick Cardio',
     description: 'A brisk, low-equipment session to raise your heart rate.',
-    difficulty: 'beginner' as const,
+    difficulty: 'beginner',
     durationMinutes: 20,
   },
   {
     title: 'Full-Body Strength',
     description: 'A balanced strength circuit for the major muscle groups.',
-    difficulty: 'intermediate' as const,
+    difficulty: 'intermediate',
     durationMinutes: 35,
   },
   {
     title: 'Recovery Flow',
     description: 'Gentle mobility and stretching for an active recovery day.',
-    difficulty: 'beginner' as const,
+    difficulty: 'beginner',
     durationMinutes: 15,
   },
   {
     title: 'Endurance Intervals',
     description: 'Challenging run intervals to build speed and stamina.',
-    difficulty: 'advanced' as const,
+    difficulty: 'advanced',
     durationMinutes: 40,
   },
 ];
 
+// Seed the octofit_db database with test data.
 async function seedDatabase(): Promise<void> {
   await connectDatabase();
 
   try {
-    const users = await Promise.all(
-      userData.map(({ username, ...data }) =>
-        UserModel.findOneAndUpdate({ username }, data, {
-          returnDocument: 'after',
-          upsert: true,
-          runValidators: true,
-          setDefaultsOnInsert: true,
-        }),
-      ),
-    );
-    const usersByUsername = new Map(
-      users.map((user) => [user.username, user._id]),
-    );
+    await Promise.all([
+      user.deleteMany({}),
+      team.deleteMany({}),
+      activity.deleteMany({}),
+      leaderboard.deleteMany({}),
+      workout.deleteMany({}),
+    ]);
 
-    const teams = await Promise.all([
-      TeamModel.findOneAndUpdate(
-        { name: 'Trail Blazers' },
-        {
-          description: 'A team that loves outdoor runs and weekend hikes.',
-          members: [
-            usersByUsername.get('alex-runner'),
-            usersByUsername.get('jordan-fit'),
-          ],
-        },
-        { returnDocument: 'after', upsert: true, runValidators: true },
-      ),
-      TeamModel.findOneAndUpdate(
-        { name: 'Pulse Squad' },
-        {
-          description: 'Cycling, strength training, and steady progress.',
-          members: [
-            usersByUsername.get('sam-cyclist'),
-            usersByUsername.get('taylor-strong'),
-          ],
-        },
-        { returnDocument: 'after', upsert: true, runValidators: true },
-      ),
+    const users = await user.insertMany(userData);
+    const usersByUsername = new Map(
+      users.map((record) => [record.username, record._id]),
+    );
+    const teams = await team.insertMany([
+      {
+        name: 'Trail Blazers',
+        description: 'A team that loves outdoor runs and weekend hikes.',
+        members: [
+          usersByUsername.get('alex-runner'),
+          usersByUsername.get('jordan-fit'),
+        ],
+      },
+      {
+        name: 'Pulse Squad',
+        description: 'Cycling, strength training, and steady progress.',
+        members: [
+          usersByUsername.get('sam-cyclist'),
+          usersByUsername.get('taylor-strong'),
+        ],
+      },
     ]);
 
     const activities = [
@@ -96,68 +87,45 @@ async function seedDatabase(): Promise<void> {
       { username: 'taylor-strong', activityType: 'Cycling', durationMinutes: 38, calories: 350, day: 4 },
     ];
 
-    await Promise.all(
-      activities.map(({ username, day, ...activity }) => {
-        const user = usersByUsername.get(username);
-        if (!user) {
+    await activity.insertMany(
+      activities.map(({ username, day, ...record }) => {
+        const userId = usersByUsername.get(username);
+        if (!userId) {
           throw new Error(`Seed user not found: ${username}`);
         }
 
-        const completedAt = new Date(`2026-10-0${day}T12:00:00.000Z`);
-        return ActivityModel.findOneAndUpdate(
-          { user, activityType: activity.activityType, completedAt },
-          { ...activity, user, completedAt },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        );
+        return {
+          ...record,
+          user: userId,
+          completedAt: new Date(`2026-10-0${day}T12:00:00.000Z`),
+        };
       }),
     );
 
-    const period = '2026-10';
-    await Promise.all(
+    await leaderboard.insertMany(
       userData.map(({ username }, index) => {
-        const user = usersByUsername.get(username);
-        if (!user) {
+        const userId = usersByUsername.get(username);
+        if (!userId) {
           throw new Error(`Seed user not found: ${username}`);
         }
 
-        return LeaderboardEntryModel.findOneAndUpdate(
-          { user, period },
-          {
-            user,
-            team: teams[index < 2 ? 0 : 1]._id,
-            period,
-            points: [820, 690, 760, 640][index],
-          },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        );
+        return {
+          user: userId,
+          team: teams[index < 2 ? 0 : 1]._id,
+          period: '2026-10',
+          points: [820, 690, 760, 640][index],
+        };
       }),
     );
 
-    await Promise.all(
-      workoutData.map(({ title, ...workout }) =>
-        WorkoutModel.findOneAndUpdate(
-          { title },
-          workout,
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        ),
-      ),
-    );
-
-    const [userCount, teamCount, activityCount, leaderboardCount, workoutCount] =
-      await Promise.all([
-        UserModel.countDocuments(),
-        TeamModel.countDocuments(),
-        ActivityModel.countDocuments(),
-        LeaderboardEntryModel.countDocuments(),
-        WorkoutModel.countDocuments(),
-      ]);
+    await workout.insertMany(workoutData);
 
     console.log('Database seeding complete:', {
-      users: userCount,
-      teams: teamCount,
-      activities: activityCount,
-      leaderboardEntries: leaderboardCount,
-      workouts: workoutCount,
+      users: users.length,
+      teams: teams.length,
+      activities: activities.length,
+      leaderboardEntries: userData.length,
+      workouts: workoutData.length,
     });
   } finally {
     await mongoose.disconnect();

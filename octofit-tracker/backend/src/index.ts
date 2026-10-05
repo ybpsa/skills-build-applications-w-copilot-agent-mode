@@ -23,7 +23,7 @@ app.get('/api/health', (_request, response) => {
     database: databaseConnected ? 'connected' : 'disconnected',
   });
 });
-app.use('/api', apiRoutes);
+app.use(apiRoutes);
 
 app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
   if (error instanceof mongoose.Error.ValidationError) {
