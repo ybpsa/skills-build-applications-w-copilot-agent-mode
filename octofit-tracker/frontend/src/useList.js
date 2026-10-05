@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { fetchList } from './api.js'
 
-export default function useList(resource) {
+// `load` receives an AbortSignal and resolves to an array of items.
+export default function useList(load) {
   const [state, setState] = useState({ items: [], loading: true, error: null })
 
   useEffect(() => {
     const controller = new AbortController()
-    fetchList(resource, controller.signal)
+    load(controller.signal)
       .then((items) => setState({ items, loading: false, error: null }))
       .catch((error) => {
         if (error.name !== 'AbortError') {
@@ -14,7 +14,7 @@ export default function useList(resource) {
         }
       })
     return () => controller.abort()
-  }, [resource])
+  }, [load])
 
   return state
 }

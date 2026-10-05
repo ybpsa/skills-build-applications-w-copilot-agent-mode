@@ -1,5 +1,11 @@
 import DataTable from './DataTable.jsx'
+import { apiUrl, parseList } from '../api.js'
 import useList from '../useList.js'
+
+const ENDPOINT = '/api/leaderboard/'
+
+const load = (signal) =>
+  fetch(apiUrl(ENDPOINT), { signal }).then(parseList)
 
 const columns = [
   { label: 'Rank', render: (_e, i) => i + 1 },
@@ -10,6 +16,6 @@ const columns = [
 ]
 
 export default function Leaderboard() {
-  const state = useList('leaderboard')
+  const state = useList(load)
   return <DataTable title="Leaderboard" state={state} columns={columns} />
 }

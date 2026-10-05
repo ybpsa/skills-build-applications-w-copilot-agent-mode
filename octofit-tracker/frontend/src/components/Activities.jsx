@@ -1,5 +1,11 @@
 import DataTable from './DataTable.jsx'
+import { apiUrl, parseList } from '../api.js'
 import useList from '../useList.js'
+
+const ENDPOINT = '/api/activities/'
+
+const load = (signal) =>
+  fetch(apiUrl(ENDPOINT), { signal }).then(parseList)
 
 const columns = [
   { label: 'User', render: (a) => a.user?.displayName ?? a.user?.username ?? a.user },
@@ -10,6 +16,6 @@ const columns = [
 ]
 
 export default function Activities() {
-  const state = useList('activities')
+  const state = useList(load)
   return <DataTable title="Activities" state={state} columns={columns} />
 }
