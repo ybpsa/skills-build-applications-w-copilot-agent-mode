@@ -1,13 +1,60 @@
+import cors from 'cors';
 import express from 'express';
+import mongoose from 'mongoose';
+import { connectDatabase, getApiBaseUrl } from './config/database.js';
+import apiRoutes from './routes/api.js';
 
 const app = express();
 const port = Number(process.env.PORT ?? 8000);
+const codespaceName = process.env.CODESPACE_NAME;
+const allowedOrigins = [
+  'http://localhost:5173',
+  ...(codespaceName
+    ? [`https://${codespaceName}-5173.app.github.dev`]
+    : []),
+];
 
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 app.get('/api/health', (_request, response) => {
-  response.json({ status: 'ok' });
+  const databaseConnected = mongoose.connection.readyState === 1;
+  response.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? 'ok' : 'unavailable',
+    database: databaseConnected ? 'connected' : 'disconnected',
+  });
+});
+app.use('/api', apiRoutes);
+
+app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+  if (error instanceof mongoose.Error.ValidationError) {
+    response.status(400).json({ error: error.message });
+    return;
+  }
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 11000
+  ) {
+    response.status(409).json({ error: 'A record with that unique value already exists.' });
+    return;
+  }
+
+  console.error('API request failed:', error);
+  response.status(500).json({ error: 'Internal server error.' });
 });
 
-app.listen(port, () => {
-  console.log(`OctoFit API listening on port ${port}`);
+async function startServer(): Promise<void> {
+  await connectDatabase();
+  app.listen(port, () => {
+    console.log(`OctoFit API listening at ${getApiBaseUrl()}`);
+  });
+}
+
+startServer().catch((error: unknown) => {
+  console.error('Failed to start OctoFit API:', error);
+  process.exitCode = 1;
 });
+
+export default app;
