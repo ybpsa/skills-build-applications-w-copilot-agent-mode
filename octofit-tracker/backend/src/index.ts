@@ -1,11 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 import mongoose from 'mongoose';
-import { connectDatabase, getApiBaseUrl } from './config/database.js';
 import apiRoutes from './routes/api.js';
 
 const app = express();
-const port = Number(process.env.PORT ?? 8000);
 const codespaceName = process.env.CODESPACE_NAME;
 const allowedOrigins = [
   'http://localhost:5173',
@@ -43,18 +41,6 @@ app.use((error: unknown, _request: express.Request, response: express.Response, 
 
   console.error('API request failed:', error);
   response.status(500).json({ error: 'Internal server error.' });
-});
-
-async function startServer(): Promise<void> {
-  await connectDatabase();
-  app.listen(port, () => {
-    console.log(`OctoFit API listening at ${getApiBaseUrl()}`);
-  });
-}
-
-startServer().catch((error: unknown) => {
-  console.error('Failed to start OctoFit API:', error);
-  process.exitCode = 1;
 });
 
 export default app;

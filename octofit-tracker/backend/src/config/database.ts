@@ -7,10 +7,3 @@ export async function connectDatabase(): Promise<void> {
   await mongoose.connect(connectionString);
   console.log('Connected to octofit_db');
 }
-
-export function getApiBaseUrl(): string {
-  const codespaceName = process.env.CODESPACE_NAME;
-  return codespaceName
-    ? `https://${codespaceName}-8000.app.github.dev`
-    : 'http://localhost:8000';
-}
